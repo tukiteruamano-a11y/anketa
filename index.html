@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Генератор анкет</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #111; color: #ddd; font-family: Arial; padding: 20px; }
+        .app { max-width: 700px; margin: 0 auto; background: #222; padding: 20px; border: 1px solid #333; }
+        h1 { color: #fff; text-align: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #444; }
+        .field { margin: 15px 0; }
+        label { display: block; margin-bottom: 5px; color: #aaa; font-size: 14px; }
+        input, textarea { width: 100%; padding: 8px; background: #333; border: 1px solid #444; color: #fff; border-radius: 3px; }
+        textarea { min-height: 60px; resize: vertical; }
+        .photos { display: flex; gap: 10px; margin: 15px 0; }
+        .photo-box { flex: 1; height: 120px; background: #2a2a2a; border: 2px dashed #555; display: flex; align-items: center; justify-content: center; color: #777; cursor: pointer; }
+        .photo-box:hover { border-color: #777; }
+        .buttons { display: flex; gap: 10px; margin: 20px 0; }
+        button { flex: 1; padding: 12px; background: #333; color: #fff; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #444; }
+        #result { margin-top: 20px; display: none; }
+        #code { width: 100%; height: 200px; background: #000; color: #0f0; border: 1px solid #333; padding: 10px; font-family: monospace; margin: 10px 0; }
+        .alert { background: #252525; color: #0f0; padding: 10px; border: 1px solid #0f0; margin: 10px 0; display: none; }
+        .small { color: #888; font-size: 12px; margin-top: 5px; }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <h1>🎭 Генератор анкеты персонажа</h1>
+        
+        <div class="field">
+            <div style="display: flex; gap: 10px;">
+                <div style="flex: 1;">
+                    <label>Имя</label>
+                    <input type="text" id="name" value="Александр">
+                </div>
+                <div style="flex: 1;">
+                    <label>Фамилия</label>
+                    <input type="text" id="surname" value="Волков">
+                </div>
+                <div style="flex: 0.5;">
+                    <label>Возраст</label>
+                    <input type="number" id="age" value="32">
+                </div>
+            </div>
+        </div>
+        
+        <div class="field">
+            <label>Фотографии (200x250px)</label>
+            <div class="photos">
+                <div class="photo-box" onclick="document.getElementById('photo1').click()" id="box1">📸 Фото 1</div>
+                <div class="photo-box" onclick="document.getElementById('photo2').click()" id="box2">📸 Фото 2</div>
+            </div>
+            <input type="file" id="photo1" accept="image/*" style="display:none" onchange="loadPhoto(1)">
+            <input type="file" id="photo2" accept="image/*" style="display:none" onchange="loadPhoto(2)">
+            <div class="small">Кликните для загрузки или перетащите файлы</div>
+        </div>
+        
+        <div class="field">
+            <label>Внешность (на английском)</label>
+            <textarea id="look">Tall, athletic build, short dark hair, green eyes</textarea>
+        </div>
+        
+        <div class="field">
+            <label>Связи</label>
+            <textarea id="links">Брат - Михаил Волков\nДруг - Дмитрий Соколов</textarea>
+        </div>
+        
+        <div class="field">
+            <label>Биография</label>
+            <textarea id="bio">Родился и вырос в Брайтвинне. После школы поступил в медицинский институт, но был отчислен на третьем курсе. Работал в службе безопасности, затем открыл собственное детективное агентство.</textarea>
+        </div>
+        
+        <div class="field">
+            <label>Отношение к вирусу</label>
+            <input type="text" id="virus" value="Иммунный">
+        </div>
+        
+        <div class="field">
+            <label>Связь с игроком</label>
+            <textarea id="player">Главный персонаж кампании</textarea>
+        </div>
+        
+        <div class="buttons">
+            <button onclick="generate()">✨ СГЕНЕРИРОВАТЬ АНКЕТУ</button>
+            <button onclick="copyCode()" id="copyBtn" style="display:none">📋 КОПИРОВАТЬ КОД</button>
+        </div>
+        
+        <div id="result">
+            <label>HTML код для форума:</label>
+            <textarea id="code" readonly></textarea>
+            <div class="small">Код автоматически заключен в [html][/html]. Просто вставьте на форум.</div>
+        </div>
+        
+        <div class="alert" id="alert">✅ Код скопирован в буфер обмена!</div>
+    </div>
+
+    <script>
+        let photos = [null, null];
+        
+        // Настройка drag & drop
+        ['box1', 'box2'].forEach((boxId, index) => {
+            const box = document.getElementById(boxId);
+            box.addEventListener('dragover', e => { e.preventDefault(); box.style.borderColor = '#0a0'; });
+            box.addEventListener('dragleave', () => { box.style.borderColor = '#555'; });
+            box.addEventListener('drop', e => {
+                e.preventDefault();
+                box.style.borderColor = '#555';
+                if(e.dataTransfer.files[0]) loadPhoto(index + 1, e.dataTransfer.files[0]);
+            });
+        });
+        
+        function loadPhoto(num, file = null) {
+            if(!file) file = document.getElementById('photo' + num).files[0];
+            if(!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = e => {
+                photos[num-1] = e.target.result;
+                document.getElementById('box' + num).innerHTML = '✅ Загружено';
+                document.getElementById('box' + num).style.color = '#0a0';
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        function generate() {
+            // Получаем данные
+            const data = {
+                name: document.getElementById('name').value.trim() || 'Имя',
+                surname: document.getElementById('surname').value.trim() || 'Фамилия',
+                age: document.getElementById('age').value || '25',
+                look: document.getElementById('look').value.trim() || 'No description',
+                links: document.getElementById('links').value.trim().replace(/\n/g, '<br>'),
+                bio: document.getElementById('bio').value.trim().replace(/\n/g, '<br>'),
+                virus: document.getElementById('virus').value.trim() || 'Не указано',
+                player: document.getElementById('player').value.trim().replace(/\n/g, '<br>')
+            };
+            
+            // Генерируем HTML
+            let html = `<div style="width:700px;background:#1a1a1a;color:#e0e0e0;padding:20px;border:1px solid #333;font-family:Arial,sans-serif;">
+                <div style="text-align:center;margin-bottom:20px;padding-bottom:15px;border-bottom:1px solid #444;">
+                    <div style="font-size:24px;color:#fff;">
+                        ${data.name} ${data.surname}
+                        <sup style="font-size:12px;color:#888;margin-left:3px;">${data.age}</sup>
+                    </div>
+                </div>
+                
+                <div style="text-align:center;margin:20px 0;">
+                    <div style="display:inline-block;width:200px;height:250px;background:#252525;border:2px solid #444;margin:0 10px;overflow:hidden;">
+                        ${photos[0] ? `<img src="${photos[0]}" style="width:100%;height:100%;object-fit:cover;">` : '<div style="line-height:250px;color:#666;">Фото 1</div>'}
+                    </div>
+                    <div style="display:inline-block;width:200px;height:250px;background:#252525;border:2px solid #444;margin:0 10px;overflow:hidden;">
+                        ${photos[1] ? `<img src="${photos[1]}" style="width:100%;height:100%;object-fit:cover;">` : '<div style="line-height:250px;color:#666;">Фото 2</div>'}
+                    </div>
+                </div>
+                
+                <div style="text-align:center;color:#999;font-style:italic;font-size:14px;margin:20px 0;padding:15px;background:#252525;">
+                    ${data.look}
+                </div>
+                
+                <div style="margin:15px 0;padding:15px;background:#252525;border-left:3px solid #555;">
+                    <div style="color:#fff;margin-bottom:10px;">СВЯЗИ</div>
+                    <div>${data.links}</div>
+                </div>
+                
+                <div style="margin:15px 0;padding:15px;background:#252525;border-left:3px solid #666;">
+                    <div style="color:#fff;margin-bottom:10px;">БИОГРАФИЯ</div>
+                    <div>${data.bio}</div>
+                </div>
+                
+                <div style="margin:15px 0;padding:15px;background:#252525;border-left:3px solid #777;">
+                    <div style="color:#fff;margin-bottom:10px;">ОТНОШЕНИЕ К ВИРУСУ</div>
+                    <div>${data.virus}</div>
+                </div>
+                
+                <div style="margin:15px 0;padding:15px;background:#252525;border-left:3px solid #888;">
+                    <div style="color:#fff;margin-bottom:10px;">СВЯЗЬ С ИГРОКОМ</div>
+                    <div>${data.player}</div>
+                </div>
+            </div>`;
+            
+            // Заключаем в теги и показываем
+            const fullCode = `[html]${html}[/html]`;
+            document.getElementById('code').value = fullCode;
+            document.getElementById('result').style.display = 'block';
+            document.getElementById('copyBtn').style.display = 'inline-block';
+            
+            // Автоматическое копирование
+            setTimeout(copyCode, 100);
+        }
+        
+        async function copyCode() {
+            const code = document.getElementById('code');
+            code.select();
+            
+            try {
+                await navigator.clipboard.writeText(code.value);
+                document.getElementById('alert').style.display = 'block';
+                setTimeout(() => {
+                    document.getElementById('alert').style.display = 'none';
+                }, 2000);
+            } catch(e) {
+                document.execCommand('copy');
+                document.getElementById('alert').style.display = 'block';
+                setTimeout(() => {
+                    document.getElementById('alert').style.display = 'none';
+                }, 2000);
+            }
+        }
+        
+        // Автогенерация при загрузке
+        window.onload = generate;
+    </script>
+</body>
+</html>
